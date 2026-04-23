@@ -6,8 +6,8 @@ interface LineChartProps {
   multiData?: { x: number; y: number }[][];
   multiLineColors?: string[];
   color?: string;
-  width?: number;
-  height?: number;
+  width?: number; // Base width for aspect ratio
+  height?: number; // Base height for aspect ratio
   useGradient?: boolean;
   onScrub?: (index: number) => void;
 }
@@ -16,9 +16,9 @@ const LineChart: React.FC<LineChartProps> = ({
   data, 
   multiData, 
   multiLineColors, 
-  color = '#60a5fa', 
-  width = 300, 
-  height = 150, 
+  color = '#38bdf8', 
+  width = 500, 
+  height = 200, 
   useGradient, 
   onScrub 
 }) => {
@@ -30,27 +30,34 @@ const LineChart: React.FC<LineChartProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    // Define gradient if needed
+    const defs = svg.append('defs');
+
+    // Glow filter
+    const filter = defs.append('filter')
+      .attr('id', 'glow')
+      .attr('x', '-20%')
+      .attr('y', '-20%')
+      .attr('width', '140%')
+      .attr('height', '140%');
+    filter.append('feGaussianBlur')
+      .attr('stdDeviation', '3')
+      .attr('result', 'blur');
+    filter.append('feComposite')
+      .attr('in', 'SourceGraphic')
+      .attr('in2', 'blur')
+      .attr('operator', 'over');
+
+    // Linear Gradient
     if (useGradient) {
-      const gradientId = 'line-gradient';
-      const defs = svg.append('defs');
       const linearGradient = defs.append('linearGradient')
-        .attr('id', gradientId)
-        .attr('x1', '0%')
-        .attr('y1', '0%')
-        .attr('x2', '100%')
-        .attr('y2', '0%');
-
-      linearGradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', '#ef4444'); // Red (Hot)
-
-      linearGradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', '#06b6d4'); // Cyan (Cold)
+        .attr('id', 'line-gradient')
+        .attr('x1', '0%').attr('y1', '0%')
+        .attr('x2', '100%').attr('y2', '0%');
+      linearGradient.append('stop').attr('offset', '0%').attr('stop-color', '#f87171');
+      linearGradient.append('stop').attr('offset', '100%').attr('stop-color', '#22d3ee');
     }
 
-    const margin = { top: 15, right: 15, bottom: 25, left: 35 };
+    const margin = { top: 10, right: 10, bottom: 20, left: 10 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -59,62 +66,54 @@ const LineChart: React.FC<LineChartProps> = ({
     const allPaths = multiData || [data];
     const allPoints = allPaths.flatMap(p => p);
     const xMax = Math.max(10, d3.max(allPoints, d => d.x) || 0);
-    
-    // Dynamic Y domain with padding to avoid cut-off
-    const yMin = d3.min(allPoints, d => d.y) ?? 0;
-    const yMax = d3.max(allPoints, d => d.y) ?? 6;
-    const yPadding = Math.max((yMax - yMin) * 0.1, 0.5);
+    const yMin = (d3.min(allPoints, d => d.y) ?? 0) - 0.5;
+    const yMax = (d3.max(allPoints, d => d.y) ?? 6) + 0.5;
 
-    const x = d3.scaleLinear()
-      .domain([0, xMax])
-      .range([0, innerWidth]);
+    const x = d3.scaleLinear().domain([0, xMax]).range([0, innerWidth]);
+    const y = d3.scaleLinear().domain([yMin, yMax]).range([innerHeight, 0]);
 
-    const y = d3.scaleLinear()
-      .domain([yMin - yPadding, yMax + yPadding])
-      .range([innerHeight, 0]);
-
-    // Axes with dark mode colors
-    g.append('g')
+    // Axis groups
+    const xAxis = g.append('g')
       .attr('transform', `translate(0,${innerHeight})`)
       .call(d3.axisBottom(x).ticks(5))
-      .attr('color', '#94a3b8');
+      .attr('color', 'rgba(255, 255, 255, 0.1)');
 
-    g.append('g')
+    const yAxis = g.append('g')
       .call(d3.axisLeft(y).ticks(5))
-      .attr('color', '#94a3b8');
+      .attr('color', 'rgba(255, 255, 255, 0.1)');
+
+    xAxis.select('.domain').attr('stroke-opacity', 0.2);
+    yAxis.select('.domain').attr('stroke-opacity', 0.2);
 
     const line = d3.line<{ x: number; y: number }>()
       .x(d => x(d.x))
       .y(d => y(d.y))
       .curve(d3.curveMonotoneX);
 
-    // Render multi-paths
     if (multiData) {
       multiData.forEach((pathData, i) => {
-        // Use multiLineColors if available, otherwise default with low opacity
         const strokeColor = multiLineColors ? multiLineColors[i] : color;
-        const strokeOpacity = multiLineColors ? 1.0 : 0.4;
-        const strokeWidth = multiLineColors ? 2.5 : 1.5;
-
+        const strokeOpacity = multiLineColors ? 0.8 : 0.2;
+        
         g.append('path')
           .datum(pathData)
           .attr('fill', 'none')
           .attr('stroke', strokeColor)
-          .attr('stroke-width', strokeWidth)
+          .attr('stroke-width', 2)
           .attr('stroke-opacity', strokeOpacity)
+          .attr('style', multiLineColors ? 'filter: url(#glow)' : '')
           .attr('d', line);
       });
     } else {
-      // Single primary path
       g.append('path')
         .datum(data)
         .attr('fill', 'none')
         .attr('stroke', useGradient ? 'url(#line-gradient)' : color)
-        .attr('stroke-width', 2.5)
+        .attr('stroke-width', 3)
+        .attr('style', 'filter: url(#glow)')
         .attr('d', line);
     }
 
-    // Scrubbing overlay
     if (onScrub && data.length > 0) {
       const overlay = g.append('rect')
         .attr('width', innerWidth)
@@ -124,31 +123,36 @@ const LineChart: React.FC<LineChartProps> = ({
 
       const bisect = d3.bisector((d: any) => d.x).left;
       const focus = g.append('line')
-        .attr('y1', 0)
-        .attr('y2', innerHeight)
-        .attr('stroke', '#f8fafc')
-        .attr('stroke-dasharray', '3,3')
+        .attr('y1', 0).attr('y2', innerHeight)
+        .attr('stroke', 'rgba(255, 255, 255, 0.4)')
+        .attr('stroke-dasharray', '4,4')
         .style('opacity', 0);
 
       overlay.on('mousemove', (event) => {
         const mouseX = d3.pointer(event)[0];
         const xValue = x.invert(mouseX);
         const index = Math.max(0, Math.min(data.length - 1, bisect(data, xValue)));
-        const d = data[index];
-        
-        if (d) {
-          focus.attr('x1', x(d.x)).attr('x2', x(d.x)).style('opacity', 1);
+        if (data[index]) {
+          focus.attr('x1', x(data[index].x)).attr('x2', x(data[index].x)).style('opacity', 1);
+          xAxis.attr('color', 'rgba(255, 255, 255, 0.4)');
+          yAxis.attr('color', 'rgba(255, 255, 255, 0.4)');
           onScrub(index);
         }
       });
-
       overlay.on('mouseleave', () => {
         focus.style('opacity', 0);
+        xAxis.attr('color', 'rgba(255, 255, 255, 0.1)');
+        yAxis.attr('color', 'rgba(255, 255, 255, 0.1)');
       });
     }
   }, [data, multiData, multiLineColors, color, width, height, useGradient, onScrub]);
 
-  return <svg ref={svgRef} width={width} height={height} style={{ overflow: 'visible' }} />;
+  return <svg 
+    ref={svgRef} 
+    viewBox={`0 0 ${width} ${height}`} 
+    preserveAspectRatio="xMidYMid meet" 
+    style={{ width: '100%', height: 'auto', overflow: 'visible' }} 
+  />;
 };
 
 export default LineChart;

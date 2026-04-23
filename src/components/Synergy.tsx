@@ -29,8 +29,14 @@ const Synergy: React.FC = () => {
 
   return (
     <AlgorithmView
-      title="Synergy: The Best of All Worlds"
-      description="In the real world of computer science, these modifications aren't mutually exclusive. Engineers combine them to create robust optimization tools. By combining Stochastic Search (randomized steps) with Random Restarts (multiple attempts), you create a hybrid algorithm capable of navigating incredibly rugged, noisy datasets without getting trapped in microscopic dips and bumps."
+      title={<>Synergy: <span style={{ color: '#6366f1' }}>The Best of All Worlds</span></>}
+      description={
+        <>
+          In the real world, these modifications aren't mutually exclusive. Engineers combine them to create robust optimization tools.
+          <br /><br />
+          For example, by combining Stochastic Search (randomized steps) with Random Restarts (multiple attempts), you create a hybrid algorithm capable of navigating rugged terrain that neither could do on their own.
+        </>
+      }
       terrainFn={terrainFn}
       paths={paths}
       color="#c084fc"

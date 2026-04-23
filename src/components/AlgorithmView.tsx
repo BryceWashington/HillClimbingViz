@@ -2,19 +2,20 @@ import React, { useState, useEffect, useMemo } from 'react';
 import TerrainViz from './TerrainViz';
 import LineChart from './LineChart';
 import { Play, Pause, RotateCcw } from 'lucide-react';
-import type { TerrainFunction, Step } from '../lib/algorithms';
+import type { Step, TerrainFunction } from '../lib/algorithms';
 import * as THREE from 'three';
 
 interface AlgorithmViewProps {
-  title: string;
-  description: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
   terrainFn: TerrainFunction;
   heatmapFn?: (x: number, y: number) => THREE.Color;
-  paths: Step[][]; // Supports multiple walkers
+  paths: Step[][];
   color: string;
   multiColors?: string[];
   onReset: () => void;
   children?: React.ReactNode;
+  footer?: React.ReactNode;
 }
 
 const AlgorithmView: React.FC<AlgorithmViewProps> = ({ 
@@ -26,7 +27,8 @@ const AlgorithmView: React.FC<AlgorithmViewProps> = ({
   color, 
   multiColors,
   onReset,
-  children 
+  children,
+  footer
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
@@ -40,7 +42,7 @@ const AlgorithmView: React.FC<AlgorithmViewProps> = ({
     if (isPlaying && currentStepIdx < maxSteps - 1) {
       timer = window.setTimeout(() => {
         setCurrentStepIdx(prev => prev + 1);
-      }, 100);
+      }, 80);
     } else {
       setIsPlaying(false);
     }
@@ -49,11 +51,9 @@ const AlgorithmView: React.FC<AlgorithmViewProps> = ({
 
   const getWalkerColor = (step: Step, baseColor: string) => {
     if (step.temperature !== undefined) {
-      // Temperature blending: Red (hot) -> Cyan (cold)
-      // temp typically starts at 100 and cools to 0
       const t = Math.min(100, step.temperature) / 100;
-      const c = new THREE.Color(0x06b6d4); // Cyan
-      const hot = new THREE.Color(0xef4444); // Red
+      const c = new THREE.Color(0x22d3ee); // Cyan
+      const hot = new THREE.Color(0xf87171); // Red
       return `#${hot.lerp(c, 1 - t).getHexString()}`;
     }
     return baseColor;
@@ -71,7 +71,6 @@ const AlgorithmView: React.FC<AlgorithmViewProps> = ({
     if (paths.length <= 1) return undefined;
     return paths.map(path => {
       const mapped = path.map((s, i) => ({ x: i, y: s.altitude }));
-      // Pad with last value up to maxSteps
       if (mapped.length < maxSteps) {
         const lastVal = mapped[mapped.length - 1].y;
         for (let i = mapped.length; i < maxSteps; i++) {
@@ -88,63 +87,67 @@ const AlgorithmView: React.FC<AlgorithmViewProps> = ({
   return (
     <section className="section">
       <div className="container">
-        <div style={{ marginBottom: '2rem' }}>
-          <h2>{title}</h2>
-          <p>{description}</p>
-          {children}
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', minHeight: '500px' }}>
-          <div style={{ background: '#000', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', position: 'relative' }}>
-            <TerrainViz terrainFn={terrainFn} heatmapFn={heatmapFn} walkers={currentWalkers} />
-            <div style={{ position: 'absolute', bottom: '1rem', left: '1rem', background: 'rgba(15, 23, 42, 0.8)', padding: '0.5rem 1rem', borderRadius: '4px', fontSize: '0.8rem', border: '1px solid var(--border-color)', color: '#10b981', fontFamily: 'monospace' }}>
-              {activeStep ? (
-                <>
-                  {`Step ${activeIdx}: X=${activeStep.point.x.toFixed(2)} Y=${activeStep.point.y.toFixed(2)} Alt=${activeStep.altitude.toFixed(2)}`}
-                  {activeStep.temperature !== undefined && ` | Temp=${activeStep.temperature.toFixed(1)}`}
-                </>
-              ) : 'Waiting...'}
+        <h2>{title}</h2>
+        <div className="split-layout">
+          <div className="content-half">
+            <div className="section-description" style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '2.5rem', lineHeight: '1.6' }}>{description}</div>
+            
+            {children}
+
+            <div style={{ marginTop: '3rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <button 
+                onClick={() => { setIsPlaying(!isPlaying); setScrubIdx(-1); }}
+                style={{ background: isPlaying ? 'rgba(239, 68, 68, 0.1)' : 'rgba(56, 189, 248, 0.1)', borderColor: isPlaying ? '#ef4444' : '#38bdf8', color: isPlaying ? '#ef4444' : '#38bdf8', minWidth: '140px' }}
+              >
+                {isPlaying ? <Pause size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} /> : <Play size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />}
+                {isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button onClick={() => { setCurrentStepIdx(0); setScrubIdx(-1); setIsPlaying(false); onReset(); }}>
+                <RotateCcw size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Reset
+              </button>
             </div>
+
+            {footer}
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Altitude Trace (Hover to Scrub)</h3>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <LineChart 
-                  data={chartData.slice(0, scrubIdx !== -1 ? chartData.length : currentStepIdx + 1)} 
-                  multiData={multiChartData?.map(p => p.slice(0, scrubIdx !== -1 ? p.length : currentStepIdx + 1))}
-                  multiLineColors={multiColors}
-                  color={color} 
-                  useGradient={hasTemperature}
-                  width={500}
-                  height={250}
-                  onScrub={(idx) => {
-                    setIsPlaying(false);
-                    setScrubIdx(idx);
-                  }}
-                />
-              </div>
+          <div className="viz-half">
+            <div className="terrain-container">
+              <TerrainViz terrainFn={terrainFn} heatmapFn={heatmapFn} walkers={currentWalkers} color={color} />
+            </div>
+            <div className="chart-container">
+              <LineChart 
+                data={chartData.slice(0, scrubIdx !== -1 ? chartData.length : currentStepIdx + 1)} 
+                multiData={multiChartData?.map(p => p.slice(0, scrubIdx !== -1 ? p.length : currentStepIdx + 1))}
+                multiLineColors={multiColors}
+                color={color} 
+                useGradient={hasTemperature}
+                width={600}
+                height={160}
+                onScrub={(idx) => {
+                  setIsPlaying(false);
+                  setScrubIdx(idx);
+                }}
+              />
               
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-                <button 
-                  onClick={() => { setIsPlaying(!isPlaying); setScrubIdx(-1); }}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: isPlaying ? '#ef4444' : '#6366f1', color: '#fff' }}
-                >
-                  {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                  {isPlaying ? 'Pause' : 'Play'}
-                </button>
-                <button 
-                  onClick={() => {
-                    setCurrentStepIdx(0);
-                    setScrubIdx(-1);
-                    setIsPlaying(false);
-                    onReset();
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                >
-                  <RotateCcw size={18} /> Reset (Random)
-                </button>
+              <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#10b981', fontFamily: 'monospace', letterSpacing: '0.05em', textAlign: 'center' }}>
+                {activeStep ? (
+                  <>
+                    <span style={{ color: 'var(--text-secondary)' }}>POS </span> 
+                    X:{activeStep.point.x.toFixed(2)} Y:{activeStep.point.y.toFixed(2)} 
+                    <span style={{ marginLeft: '1.5rem', color: 'var(--text-secondary)' }}>ALT </span> 
+                    {activeStep.altitude.toFixed(3)}
+                    {activeStep.temperature !== undefined && (
+                      <>
+                        <span style={{ marginLeft: '1.5rem', color: 'var(--text-secondary)' }}>TEMP </span> 
+                        {activeStep.temperature.toFixed(1)}°
+                      </>
+                    )}
+                  </>
+                ) : 'INITIALIZING...'}
+              </div>
+
+              <div style={{ marginTop: '1.5rem', fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.5, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                Drag to rotate • Scroll to zoom • Hover chart to scrub
               </div>
             </div>
           </div>
@@ -153,5 +156,4 @@ const AlgorithmView: React.FC<AlgorithmViewProps> = ({
     </section>
   );
 };
-
 export default AlgorithmView;

@@ -11,6 +11,8 @@ interface TerrainVizProps {
   autoRotate?: boolean;
   interactive?: boolean;
   showLabels?: boolean;
+  color?: string | number;
+  cameraPos?: { x: number; y: number; z: number };
 }
 
 const TerrainViz: React.FC<TerrainVizProps> = ({ 
@@ -20,7 +22,9 @@ const TerrainViz: React.FC<TerrainVizProps> = ({
   className,
   autoRotate = false,
   interactive = true,
-  showLabels = false
+  showLabels = false,
+  color,
+  cameraPos
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneManagerRef = useRef<SceneManager | null>(null);
@@ -46,8 +50,8 @@ const TerrainViz: React.FC<TerrainVizProps> = ({
   }, []);
 
   useEffect(() => {
-    sceneManagerRef.current?.setTerrain(terrainFn, heatmapFn);
-  }, [terrainFn, heatmapFn]);
+    sceneManagerRef.current?.setTerrain(terrainFn, heatmapFn, color);
+  }, [terrainFn, heatmapFn, color]);
 
   useEffect(() => {
     if (sceneManagerRef.current) {
@@ -56,8 +60,11 @@ const TerrainViz: React.FC<TerrainVizProps> = ({
       if (showLabels) {
         sceneManagerRef.current.addAxisLabels();
       }
+      if (cameraPos) {
+        sceneManagerRef.current.setCameraPosition(cameraPos.x, cameraPos.y, cameraPos.z);
+      }
     }
-  }, [autoRotate, interactive, showLabels]);
+  }, [autoRotate, interactive, showLabels, cameraPos]);
 
   const prevWalkers = useRef<string[]>([]);
   useEffect(() => {

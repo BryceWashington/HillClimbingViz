@@ -1,36 +1,32 @@
 :root {
-  --color-standard: #60a5fa; /* Brighter Blue for Dark Mode */
-  --color-restart: #c084fc; /* Brighter Purple */
-  --color-stochastic: #fb923c; /* Brighter Orange */
-  --color-beam: #4ade80; /* Brighter Green */
-  --color-annealing-start: #f87171; /* Brighter Red */
-  --color-annealing-end: #22d3ee; /* Brighter Cyan */
+  --color-standard: #38bdf8; /* Vibrant Sky Blue */
+  --color-restart: #c084fc; /* Vibrant Purple */
+  --color-stochastic: #fb923c; /* Vibrant Orange */
+  --color-beam: #4ade80; /* Vibrant Green */
+  --color-annealing-start: #f87171; /* Vibrant Red */
+  --color-annealing-end: #22d3ee; /* Vibrant Cyan */
   
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
+  --bg-primary: #020617; /* Deep Midnight Black */
+  --bg-secondary: #0f172a;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --border-color: #334155;
+  --border-color: rgba(255, 255, 255, 0.05);
 
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
 
   color-scheme: dark;
   color: var(--text-primary);
   background-color: var(--bg-primary);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  display: block; /* Fixed from flex to allow normal scrolling */
+  background-color: var(--bg-primary);
+  overflow-x: hidden;
 }
 
 #root {
@@ -41,31 +37,37 @@ body {
   box-sizing: border-box;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1, h2, h3, h4 {
   margin-top: 0;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
 p {
   color: var(--text-secondary);
+  font-weight: 400;
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  padding: 0.8em 1.6em;
+  font-size: 0.95em;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
 }
+
 button:hover {
-  border-color: #646cff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+
+input[type="range"] {
+  accent-color: #6366f1;
 }
